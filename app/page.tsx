@@ -4,120 +4,27 @@ import { useMemo, useState } from "react";
 
 type Card = {
   id: string;
-  icon: string;
+  index: string;
   label: string;
   value: string;
-  summary: string;
-  eyebrow: string;
+  note: string;
+  detail: string;
   accent: string;
-  details: string[];
 };
 
-const cards: Card[] = [
-  {
-    id: "hype",
-    icon: "🔥",
-    label: "Hype",
-    value: "78%",
-    summary: "Getting popular",
-    eyebrow: "Destination interest",
-    accent: "warm",
-    details: [
-      "People are starting to notice this destination around your dates.",
-      "Recent travel-content activity is above its usual level.",
-      "78–90% means the destination is having a moment; 90–100% is peak hype.",
-    ],
-  },
-  {
-    id: "trend",
-    icon: "📈",
-    label: "Trend",
-    value: "+18%",
-    summary: "Rising this week",
-    eyebrow: "Momentum",
-    accent: "green",
-    details: [
-      "Interest is moving upward compared with the recent baseline.",
-      "A rising trend can signal that a quiet destination is about to become busier.",
-      "This is a prediction signal, not a guarantee of future bookings.",
-    ],
-  },
-  {
-    id: "crowd",
-    icon: "👥",
-    label: "Crowd",
-    value: "Quite busy",
-    summary: "Popular, but manageable",
-    eyebrow: "Expected experience",
-    accent: "violet",
-    details: [
-      "Expect noticeable visitor activity around the most popular places.",
-      "Peak attraction hours are likely to feel busier than early morning or evening.",
-      "We keep the underlying score hidden and translate it into human language.",
-    ],
-  },
-  {
-    id: "expense",
-    icon: "₹",
-    label: "Expense",
-    value: "+27%",
-    summary: "Above normal",
-    eyebrow: "Price pressure",
-    accent: "gold",
-    details: [
-      "Comparable stays are currently showing higher price pressure for these dates.",
-      "Example baseline: ₹12,000 for a comparable 5★ double room.",
-      "Selected-date example: ₹15,240 — about 27% above the baseline.",
-    ],
-  },
-  {
-    id: "weather",
-    icon: "☀️",
-    label: "Weather",
-    value: "Excellent",
-    summary: "18° — 25°",
-    eyebrow: "Trip conditions",
-    accent: "sky",
-    details: [
-      "Morning: clear and cool. Afternoon: bright with comfortable outdoor conditions.",
-      "Evening: cooler with light winds; nights are noticeably colder.",
-      "Forecast confidence is shown separately because confidence changes with lead time.",
-    ],
-  },
-  {
-    id: "conditions",
-    icon: "🚨",
-    label: "Conditions",
-    value: "Watch",
-    summary: "Recent activity detected",
-    eyebrow: "Destination alerts",
-    accent: "red",
-    details: [
-      "No road intelligence is included here — route traffic belongs to the future Road Intelligence product.",
-      "This card is reserved for destination-level closures, advisories, weather hazards, local disruptions and other relevant conditions.",
-      "Every alert will eventually carry its source and last-checked time.",
-    ],
-  },
-  {
-    id: "alternatives",
-    icon: "🧭",
-    label: "Alternatives",
-    value: "3 nearby",
-    summary: "Quieter options",
-    eyebrow: "If you want less rush",
-    accent: "teal",
-    details: [
-      "Naggar — quieter mountain atmosphere, around 1 hour from Manali.",
-      "Jibhi — peaceful alternative with lower visitor pressure.",
-      "Tirthan Valley — a slower option for nature and quiet.",
-    ],
-  },
+const intelligence: Card[] = [
+  { id: "hype", index: "01", label: "Hype", value: "78", note: "having a moment", detail: "Interest is well above Manali's usual baseline for this period.", accent: "hype" },
+  { id: "trend", index: "02", label: "Momentum", value: "+18%", note: "rising this week", detail: "Recent attention is accelerating rather than simply staying high.", accent: "trend" },
+  { id: "crowd", index: "03", label: "Crowd", value: "Quite busy", note: "especially midday", detail: "Expect noticeable activity around the best-known attractions during peak hours.", accent: "crowd" },
+  { id: "expense", index: "04", label: "Expense", value: "+27%", note: "above normal", detail: "Comparable stays are currently carrying a higher price pressure for these dates.", accent: "expense" },
+  { id: "weather", index: "05", label: "Weather", value: "18°—25°", note: "excellent window", detail: "Clear mornings, comfortable afternoons and colder evenings. Forecast confidence is moderate.", accent: "weather" },
+  { id: "conditions", index: "06", label: "Conditions", value: "Watch", note: "check before leaving", detail: "This signal is reserved for destination-level advisories, closures, hazards and disruptions — not route traffic.", accent: "conditions" },
 ];
 
 const destinations = [
-  { name: "Manali", region: "Himachal Pradesh", hint: "Popular mountain escape" },
-  { name: "Jibhi", region: "Himachal Pradesh", hint: "Quiet valley getaway" },
-  { name: "Rishikesh", region: "Uttarakhand", hint: "River & mountain town" },
+  { name: "Manali", region: "Himachal Pradesh", hint: "Mountain escape" },
+  { name: "Jibhi", region: "Himachal Pradesh", hint: "Quiet valley" },
+  { name: "Rishikesh", region: "Uttarakhand", hint: "River town" },
 ];
 
 export default function Home() {
@@ -125,113 +32,144 @@ export default function Home() {
   const [dates, setDates] = useState("10 Oct — 12 Oct");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [dark, setDark] = useState(false);
 
   const matches = useMemo(() => {
-    const value = query.trim().toLowerCase();
-    if (!value) return [];
-    return destinations.filter((item) => `${item.name} ${item.region}`.toLowerCase().includes(value));
+    const q = query.trim().toLowerCase();
+    return q ? destinations.filter((d) => `${d.name} ${d.region}`.toLowerCase().includes(q)) : [];
   }, [query]);
 
   return (
-    <main className="page-shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">S</span>
+    <main className={`site ${dark ? "dark" : ""}`}>
+      <div className="grain" />
+      <header className="nav">
+        <a className="logo" href="#" aria-label="Sync and Explore">
+          <span className="logo-symbol">S</span>
           <span>SYNC <i>&</i> EXPLORE</span>
+        </a>
+        <div className="nav-right">
+          <span className="nav-label">DESTINATION INTELLIGENCE</span>
+          <button className="theme-toggle" onClick={() => setDark(!dark)} aria-label="Toggle theme">
+            <span className={dark ? "active" : ""}>☾</span><span className={!dark ? "active" : ""}>☼</span>
+          </button>
         </div>
-        <span className="product-tag">DESTINATION INTELLIGENCE</span>
       </header>
 
       <section className="hero">
-        <p className="kicker">TRAVEL BEFORE YOU TRAVEL</p>
-        <h1>Know the place.<br /><em>Choose the moment.</em></h1>
-        <p className="hero-copy">See what your destination could feel like on the dates you&apos;re thinking about — before you commit.</p>
-
-        <div className="search-panel">
-          <div className="search-field">
-            <span>⌕</span>
-            <div>
-              <label>DESTINATION</label>
-              <input
-                value={query || destination.name}
-                onChange={(event) => setQuery(event.target.value)}
-                onFocus={() => setQuery("")}
-                placeholder="Search a city..."
-                aria-label="Search destination"
-              />
-            </div>
-            {matches.length > 0 && (
-              <div className="suggestions">
-                {matches.map((item) => (
-                  <button key={item.name} onClick={() => { setDestination(item); setQuery(""); setOpen(null); }}>
-                    <strong>{item.name}</strong><span>{item.region} · {item.hint}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="date-field">
-            <span>◷</span>
-            <div>
-              <label>YOUR DATES</label>
-              <input value={dates} onChange={(event) => setDates(event.target.value)} aria-label="Trip dates" />
-            </div>
-          </div>
-          <button className="analyse-button" onClick={() => setOpen(null)}>Analyse <span>→</span></button>
+        <div className="hero-meta"><span>01</span><span>THE INTELLIGENCE LAYER</span></div>
+        <div className="hero-copy">
+          <p className="overline">TRAVEL BEFORE YOU TRAVEL</p>
+          <h1>Choose the <em>moment.</em></h1>
+          <p className="lede">A destination can be beautiful and still be the wrong choice for your dates. See what is changing before you book.</p>
         </div>
       </section>
 
-      <section className="destination-heading">
-        <div>
-          <p className="kicker">YOUR DESTINATION</p>
-          <h2>{destination.name}<span>, {destination.region}</span></h2>
+      <section className="command">
+        <div className="command-label"><span className="pulse" /> ANALYSE A DESTINATION</div>
+        <div className="command-row">
+          <div className="command-field search-wrap">
+            <small>WHERE</small>
+            <input value={query || destination.name} onChange={(e) => setQuery(e.target.value)} onFocus={() => setQuery("")} placeholder="Search a city" aria-label="Search destination" />
+            {matches.length > 0 && <div className="suggestions">{matches.map((item) => <button key={item.name} onClick={() => { setDestination(item); setQuery(""); }}>{item.name}<span>{item.region} · {item.hint}</span></button>)}</div>}
+          </div>
+          <div className="command-field">
+            <small>WHEN</small>
+            <input value={dates} onChange={(e) => setDates(e.target.value)} aria-label="Trip dates" />
+          </div>
+          <button className="analyse" onClick={() => setOpen(null)}>RUN INTELLIGENCE <span>↗</span></button>
         </div>
-        <div className="selected-date">{dates}</div>
       </section>
 
-      <section className="intelligence-grid" aria-label="Destination intelligence">
-        {cards.map((card) => {
-          const isOpen = open === card.id;
-          return (
-            <article key={card.id} className={`intel-card ${isOpen ? "is-open" : ""} accent-${card.accent}`} onClick={() => setOpen(isOpen ? null : card.id)}>
-              <div className="card-topline"><span className="card-icon">{card.icon}</span><span className="card-eyebrow">{card.eyebrow}</span><span className="expand">{isOpen ? "×" : "↗"}</span></div>
-              <div className="card-main">
-                <h3>{card.label}</h3>
-                <strong>{card.value}</strong>
-                <p>{card.summary}</p>
-              </div>
-              {isOpen && (
-                <div className="card-details">
-                  {card.details.map((detail, index) => <p key={index}><span>0{index + 1}</span>{detail}</p>)}
+      <section className="destination">
+        <div className="destination-index">02 / DESTINATION</div>
+        <div className="destination-main">
+          <div>
+            <h2>{destination.name}<span>, {destination.region}</span></h2>
+            <p>What the signals suggest for <strong>{dates}</strong>.</p>
+          </div>
+          <div className="date-chip">{dates}</div>
+        </div>
+      </section>
+
+      <section className="intel">
+        <div className="intel-intro">
+          <span className="section-no">03</span>
+          <div>
+            <p className="overline">SIX SIGNALS</p>
+            <h3>Read the place<br /><em>before you go.</em></h3>
+          </div>
+          <p className="intro-note">Not a single score. Each signal answers a different question about the same trip.</p>
+        </div>
+
+        <div className="signal-grid">
+          {intelligence.map((card, i) => {
+            const expanded = open === card.id;
+            return (
+              <article key={card.id} className={`signal signal-${card.accent} ${expanded ? "expanded" : ""} signal-${i + 1}`} onClick={() => setOpen(expanded ? null : card.id)}>
+                <div className="signal-head"><span>{card.index}</span><span>{expanded ? "CLOSE" : "OPEN"}</span></div>
+                <div className="signal-body">
+                  <p className="signal-label">{card.label}</p>
+                  <div className="signal-value">{card.value}</div>
+                  <p className="signal-note">{card.note}</p>
                 </div>
-              )}
-              {!isOpen && <div className="card-hint">Click to explore</div>}
-            </article>
-          );
-        })}
+                <div className="signal-line"><span /><span>{expanded ? "−" : "+"}</span></div>
+                {expanded && <div className="signal-detail"><p>{card.detail}</p><div className="micro"><span>DATE-SPECIFIC</span><span>MOCK SIGNAL</span></div></div>}
+              </article>
+            );
+          })}
+        </div>
       </section>
 
-      <section className="alternatives-panel">
-        <div className="section-heading">
-          <div><p className="kicker">WHEN THE NUMBERS SAY SOMETHING ELSE</p><h2>Maybe there&apos;s a better way.</h2></div>
-          <p>We&apos;ll use the same intelligence to find nearby places that fit your dates better.</p>
+      <section className="insight">
+        <div className="insight-mark">07</div>
+        <div className="insight-copy">
+          <p className="overline">THE USEFUL PART</p>
+          <h3>Manali is popular.<br /><em>So what?</em></h3>
+          <p>When signals disagree, the product should explain the tension — not hide it inside another score.</p>
         </div>
-        <div className="alternative-grid">
-          {[{name:"Naggar", time:"~1 hr from Manali", mood:"Quieter", stat:"−22% price pressure"}, {name:"Jibhi", time:"~2.5 hrs from Manali", mood:"Peaceful", stat:"−19% price pressure"}, {name:"Tirthan Valley", time:"~3.5 hrs from Manali", mood:"Very peaceful", stat:"−28% price pressure"}].map((item) => (
-            <button className="alternative" key={item.name}>
-              <span className="alt-arrow">↗</span><p>{item.time}</p><h3>{item.name}</h3><div><span>{item.mood}</span><span>{item.stat}</span></div>
+        <div className="insight-data">
+          <div><span>HYPE</span><strong>78</strong></div>
+          <div><span>MOMENTUM</span><strong>+18%</strong></div>
+          <div><span>EXPENSE</span><strong>+27%</strong></div>
+          <p>Interest is rising while prices are already above normal.</p>
+        </div>
+      </section>
+
+      <section className="alternatives">
+        <div className="section-line"><span>08 / BETTER ALTERNATIVES</span><span>BASED ON YOUR DATES</span></div>
+        <div className="alternative-head">
+          <h3>Maybe there&apos;s<br /><em>another way.</em></h3>
+          <p>Nearby places with a different balance of crowd, cost and atmosphere.</p>
+        </div>
+        <div className="alternative-list">
+          {[
+            ["Naggar", "Himachal Pradesh", "quieter", "−22% price pressure"],
+            ["Jibhi", "Himachal Pradesh", "peaceful", "−19% price pressure"],
+            ["Tirthan Valley", "Himachal Pradesh", "very quiet", "−28% price pressure"],
+          ].map(([name, region, mood, stat], index) => (
+            <button className="alternative" key={name}>
+              <span className="alt-index">0{index + 1}</span>
+              <span className="alt-place"><strong>{name}</strong><small>{region}</small></span>
+              <span className="alt-mood">{mood}</span>
+              <span className="alt-stat">{stat}</span>
+              <span className="alt-arrow">↗</span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="dates-strip">
-        <div><p className="kicker">OR KEEP MANALI</p><h2>Find a calmer weekend.</h2></div>
-        <div className="date-option"><span>17 — 19 OCT</span><strong>Manageable</strong><small>Lower crowd pressure · similar weather</small></div>
-        <div className="date-option featured"><span>24 — 26 OCT</span><strong>Peaceful</strong><small>Lower demand · comfortable weather</small></div>
+      <section className="dates">
+        <div className="section-line"><span>09 / BETTER DATES</span><span>KEEP {destination.name.toUpperCase()}</span></div>
+        <div className="dates-inner">
+          <h3>Keep the place.<br /><em>Change the moment.</em></h3>
+          <div className="date-options">
+            <button><span>17 — 19 OCT</span><strong>Manageable</strong><small>Lower crowd pressure</small><b>→</b></button>
+            <button className="selected"><span>24 — 26 OCT</span><strong>Peaceful</strong><small>Lower demand · similar weather</small><b>→</b></button>
+          </div>
+        </div>
       </section>
 
-      <footer><span>SYNC & EXPLORE</span><span>DESTINATION INTELLIGENCE · V0.1</span></footer>
+      <footer><span>SYNC & EXPLORE</span><span>DESTINATION INTELLIGENCE / PROTOTYPE 01</span></footer>
     </main>
   );
 }
