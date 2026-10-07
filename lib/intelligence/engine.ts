@@ -140,15 +140,15 @@ export function buildIntelligence(request: IntelligenceRequest): IntelligenceRes
       confidence: "moderate",
       reason: "Mock condition signal. Real advisories and destination-level disruptions will be connected later.",
     } : null,
-    alternatives: predictionAvailable ? [ [
+    alternatives: predictionAvailable ? [
       { name: "Naggar", region: "Himachal Pradesh", reason: "Lower crowd and price pressure for the same travel window." },
       { name: "Jibhi", region: "Himachal Pradesh", reason: "Quieter demand profile with a similar mountain escape." },
       { name: "Tirthan Valley", region: "Himachal Pradesh", reason: "Lower demand pressure while keeping the mountain experience." },
-    ],
-    betterDates: [
+    ] : [],
+    betterDates: predictionAvailable ? [
       { name: "17 — 19 Oct", region, reason: "Lower projected crowd pressure." },
       { name: "24 — 26 Oct", region, reason: "Lower demand with similar weather conditions." },
-    ],
+    ] : [],
     signals,
   };
 }
