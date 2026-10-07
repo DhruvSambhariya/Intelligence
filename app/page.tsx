@@ -212,12 +212,15 @@ export default function Home() {
 
           <div className={`command-field date-field ${mode === "current" ? "disabled" : ""}`}>
             <small>{mode === "current" ? "WHEN · CURRENT" : "WHEN · YOUR DATES"}</small>
-            <input
-              value={mode === "current" ? "Right now" : dates}
-              onChange={(e) => setDates(e.target.value)}
-              disabled={mode === "current"}
-              aria-label="Trip dates"
-            />
+            {mode === "current" ? (
+              <input value="Right now" readOnly disabled aria-label="Current intelligence" />
+            ) : (
+              <div className="date-inputs">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Start date" />
+                <span>—</span>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="End date" />
+              </div>
+            )}
           </div>
 
           <button className="analyse" onClick={() => setOpen(null)}>
@@ -245,9 +248,15 @@ export default function Home() {
         <section className="prediction-window">
           <div>
             <span className="window-kicker">PREDICTION WINDOW</span>
-            <strong>Reliable date-specific intelligence is currently available within the next 30 days.</strong>
+            <strong>
+              {intelligence?.prediction.available
+                ? `Reliable date-specific intelligence · ${intelligence.prediction.horizonDays} days ahead.`
+                : intelligence?.prediction.message ?? "Reliable date-specific predictions are unavailable for these dates."}
+            </strong>
           </div>
-          <span className="window-state">WITHIN WINDOW</span>
+          <span className="window-state">
+            {intelligence?.prediction.available ? "WITHIN WINDOW" : "OUTSIDE WINDOW"}
+          </span>
         </section>
       )}
 
