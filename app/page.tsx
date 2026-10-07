@@ -18,12 +18,6 @@ type Intelligence = {
   betterDates: { name: string; region: string; reason: string }[];
 };
 
-use client";
-
-import { useEffect, useMemo, useState } from "react";
-
-type Mode = "current" | "date";
-
 type Signal = {
   id: string;
   index: string;
