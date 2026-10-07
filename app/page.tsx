@@ -88,6 +88,7 @@ export default function Home() {
     return parts[2] + " " + (months[Number(parts[1]) - 1] ?? "");
   };
   const dates = startDate && endDate ? formatDate(startDate) + " — " + formatDate(endDate) : "Select dates";
+  const invalidDates = mode === "date" && (!startDate || !endDate || endDate < startDate);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -172,8 +173,8 @@ export default function Home() {
         <div className="command-top">
           <div className="command-label"><span className="pulse" /> ANALYSE A DESTINATION</div>
           <div className="mode-switch" aria-label="Intelligence mode">
-            <button className={mode === "current" ? "active" : ""} onClick={() => setMode("current")}>CURRENT</button>
-            <button className={mode === "date" ? "active" : ""} onClick={() => setMode("date")}>SELECT DATES</button>
+            <button className={mode === "current" ? "active" : ""} onClick={() => { setMode("current"); setIntelligence(null); setOpen(null); }}>CURRENT</button>
+            <button className={mode === "date" ? "active" : ""} onClick={() => { setMode("date"); setIntelligence(null); setOpen(null); }}>SELECT DATES</button>
           </div>
         </div>
 
@@ -190,7 +191,7 @@ export default function Home() {
             {matches.length > 0 && (
               <div className="suggestions">
                 {matches.map((item) => (
-                  <button key={item.name} onClick={() => { setDestination(item); setQuery(""); }}>
+                  <button key={item.name} onClick={() => { setDestination(item); setQuery(""); setIntelligence(null); setOpen(null); }}>
                     {item.name}<span>{item.region} · {item.hint}</span>
                   </button>
                 ))}
@@ -211,7 +212,7 @@ export default function Home() {
             )}
           </div>
 
-          <button className="analyse" onClick={() => { setOpen(null); setRequest({ destination: destination.name, mode, startDate, endDate }); }} disabled={loading}>
+          <button className="analyse" onClick={() => { setOpen(null); setRequest({ destination: destination.name, mode, startDate, endDate }); }} disabled={loading || invalidDates}>
             RUN INTELLIGENCE <span>↗</span>
           </button>
         </div>
