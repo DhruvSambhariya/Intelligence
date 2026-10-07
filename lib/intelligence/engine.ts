@@ -110,37 +110,37 @@ export function buildIntelligence(request: IntelligenceRequest): IntelligenceRes
       confidence: predictionAvailable ? confidence : null,
       message: futureMessage,
     },
-    hype: {
+    hype: predictionAvailable ? {
       current: currentHype,
       momentum,
       projected,
-      label: hypeLabel(predictionAvailable && projected !== null ? projected : currentHype),
+      label: hypeLabel(projected ?? currentHype),
       confidence,
-    },
+    } : null,
     crowd: {
       level: crowdLevel,
       label: crowdLabelText,
       confidence,
       reason: "Search demand, accommodation activity, social attention and momentum are currently pointing toward higher visitor pressure.",
     },
-    expense: {
+    expense: predictionAvailable ? {
       changePercent: signals.hotelPricePressure.value,
       label: signals.hotelPricePressure.value > 0 ? "Above normal" : "Below normal",
       confidence: signals.hotelPricePressure.confidence,
       reason: "Hotel price pressure is being treated as one demand signal rather than as a standalone prediction.",
-    },
-    weather: {
+    } : null,
+    weather: predictionAvailable ? {
       summary: "Mock forecast — comfortable window",
       confidence: "moderate",
       temperature: { minC: 18, maxC: 25 },
-    },
-    conditions: {
+    } : null,
+    conditions: predictionAvailable ? {
       status: "watch",
       label: "Watch",
       confidence: "moderate",
       reason: "Mock condition signal. Real advisories and destination-level disruptions will be connected later.",
-    },
-    alternatives: [
+    } : null,
+    alternatives: predictionAvailable ? [ [
       { name: "Naggar", region: "Himachal Pradesh", reason: "Lower crowd and price pressure for the same travel window." },
       { name: "Jibhi", region: "Himachal Pradesh", reason: "Quieter demand profile with a similar mountain escape." },
       { name: "Tirthan Valley", region: "Himachal Pradesh", reason: "Lower demand pressure while keeping the mountain experience." },
