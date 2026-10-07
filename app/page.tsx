@@ -9,11 +9,11 @@ type Intelligence = {
   mode: Mode;
   dates: { start: string | null; end: string | null };
   prediction: { available: boolean; horizonDays: number | null; confidence: string | null; message?: string };
-  hype: { current: number; momentum: number; projected: number | null; label: string; confidence: string };
-  crowd: { label: string; confidence: string; reason: string };
-  expense: { changePercent: number; label: string; confidence: string; reason: string };
-  weather: { summary: string; confidence: string; temperature?: { minC: number; maxC: number } };
-  conditions: { label: string; status: string; confidence: string; reason: string };
+  hype: { current: number; momentum: number; projected: number | null; label: string; confidence: string } | null;
+  crowd: { label: string; confidence: string; reason: string } | null;
+  expense: { changePercent: number; label: string; confidence: string; reason: string } | null;
+  weather: { summary: string; confidence: string; temperature?: { minC: number; maxC: number } } | null;
+  conditions: { label: string; status: string; confidence: string; reason: string } | null;
   alternatives: { name: string; region: string; reason: string }[];
   betterDates: { name: string; region: string; reason: string }[];
 };
@@ -79,12 +79,15 @@ export default function Home() {
   const [open, setOpen] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("current");
   const [dark, setDark] = useState(false);
+  const [request, setRequest] = useState({ destination: "Manali", mode: "current" as Mode, startDate: "2026-10-10", endDate: "2026-10-12" });
 
-  const dates = useMemo(() => {
-    const format = (value: string) =>
-      new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short" }).format(new Date(value + "T00:00:00"));
-    return startDate && endDate ? `${format(startDate)} — ${format(endDate)}` : "Select dates";
-  }, [startDate, endDate]);
+  const formatDate = (value: string) => {
+    const parts = value.split("-");
+    if (parts.length !== 3) return "Select date";
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return parts[2] + " " + (months[Number(parts[1]) - 1] ?? "");
+  };
+  const dates = startDate && endDate ? formatDate(startDate) + " — " + formatDate(endDate) : "Select dates";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -92,28 +95,19 @@ export default function Home() {
     async function loadIntelligence() {
       setLoading(true);
       setError(null);
-
       const params = new URLSearchParams({
-        destination: destination.name,
-        mode,
+        destination: request.destination,
+        mode: request.mode,
       });
-
-      if (mode === "date") {
-        params.set("startDate", startDate);
-        params.set("endDate", endDate);
+      if (request.mode === "date") {
+        params.set("startDate", request.startDate);
+        params.set("endDate", request.endDate);
       }
 
       try {
-        const response = await fetch(`/api/intelligence?${params.toString()}`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("Intelligence request failed");
-        }
-
-        const data = (await response.json()) as Intelligence;
-        setIntelligence(data);
+        const response = await fetch("/api/intelligence?" + params.toString(), { signal: controller.signal });
+        if (!response.ok) throw new Error("Intelligence request failed");
+        setIntelligence((await response.json()) as Intelligence);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setError("Unable to load destination intelligence.");
@@ -124,17 +118,17 @@ export default function Home() {
 
     loadIntelligence();
     return () => controller.abort();
-  }, [destination.name, mode, startDate, endDate]);
+  }, [request]);
 
-  const displayHype = intelligence?.hype.current ?? 78;
-  const displayMomentum = intelligence?.hype.momentum ?? 0;
+  const displayHype = intelligence?.hype?.current ?? null;
+  const displayMomentum = intelligence?.hype?.momentum ?? null;
   const displayProjected = intelligence?.hype.projected ?? displayHype;
-  const displayCrowd = intelligence?.crowd.label ?? "Loading…";
-  const displayExpense = intelligence?.expense.changePercent ?? 0;
-  const displayWeather = intelligence?.weather.temperature
+  const displayCrowd = intelligence?.crowd?.label ?? null;
+  const displayExpense = intelligence?.expense?.changePercent ?? null;
+  const displayWeather = intelligence?.weather?.temperature
     ? `${intelligence.weather.temperature.minC}°—${intelligence.weather.temperature.maxC}°`
     : "Loading…";
-  const displayConditions = intelligence?.conditions.label ?? "Loading…";
+  const displayConditions = intelligence?.conditions?.label ?? null;
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -217,7 +211,7 @@ export default function Home() {
             )}
           </div>
 
-          <button className="analyse" onClick={() => setOpen(null)}>
+          <button className="analyse" onClick={() => { setOpen(null); setRequest({ destination: destination.name, mode, startDate, endDate }); }} disabled={loading}>
             RUN INTELLIGENCE <span>↗</span>
           </button>
         </div>
@@ -274,20 +268,20 @@ export default function Home() {
               <div>
                 <p className="signal-label">Hype</p>
                 <div className="hype-row">
-                  <div className="signal-value">{displayHype}</div>
+                  <div className="signal-value">{displayHype === null ? "—" : displayHype}</div>
                   <span className="hype-label">HAVING A MOMENT</span>
                 </div>
               </div>
               <div className="hype-meter" aria-label="Hype level 78 out of 100">
-                <span style={{ width: `${displayHype}%` }} />
+                <span style={{ width: `${displayHype ?? 0}%` }} />
               </div>
               <div className="hype-scale"><span>QUIET</span><span>HEATING UP</span><span>PEAK</span></div>
               <div className="momentum">
                 <div>
                   <span>MOMENTUM</span>
-                  <strong>+{displayMomentum}%</strong>
+                  <strong>{displayMomentum === null ? "—" : "+" + displayMomentum + "%"}</strong>
                 </div>
-                <p>{intelligence?.hype.label ?? "Reading current signals…"}</p>
+                <p>{intelligence?.hype?.label ?? (intelligence?.prediction.available === false ? "Prediction unavailable for these dates." : "Reading current signals…")}</p>
               </div>
             </div>
           </article>
@@ -304,10 +298,10 @@ export default function Home() {
                 <div className="signal-body">
                   <p className="signal-label">{card.label}</p>
                   <div className="signal-value">
-                    {card.id === "crowd" ? displayCrowd :
-                     card.id === "expense" ? `+${displayExpense}%` :
-                     card.id === "weather" ? displayWeather :
-                     displayConditions}
+                    {card.id === "crowd" ? (displayCrowd ?? "—") :
+                     card.id === "expense" ? (displayExpense === null ? "—" : "+" + displayExpense + "%") :
+                     card.id === "weather" ? (displayWeather ?? "—") :
+                     (displayConditions ?? "—")}
                   </div>
                   <p className="signal-note">{card.note}</p>
                 </div>
@@ -335,9 +329,9 @@ export default function Home() {
           </p>
         </div>
         <div className="insight-data">
-          <div><span>HYPE</span><strong>{displayHype}</strong></div>
+          <div><span>HYPE</span><strong>{displayHype === null ? "—" : displayHype}</strong></div>
           <div><span>MOMENTUM</span><strong>+{displayMomentum}%</strong></div>
-          <div><span>PRICE PRESSURE</span><strong>+{displayExpense}%</strong></div>
+          <div><span>PRICE PRESSURE</span><strong>{displayExpense === null ? "—" : "+" + displayExpense + "%"}</strong></div>
           <p>Signals agree: interest is rising while prices are already moving above normal.</p>
         </div>
       </section>
