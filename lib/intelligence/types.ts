@@ -76,11 +76,11 @@ export type IntelligenceResponse = {
     confidence: Confidence | null;
     message?: string;
   };
-  hype: HypeIntelligence;
-  crowd: CrowdIntelligence;
-  expense: ExpenseIntelligence;
-  weather: WeatherIntelligence;
-  conditions: ConditionsIntelligence;
+  hype: HypeIntelligence | null;
+  crowd: CrowdIntelligence | null;
+  expense: ExpenseIntelligence | null;
+  weather: WeatherIntelligence | null;
+  conditions: ConditionsIntelligence | null;
   alternatives: Recommendation[];
   betterDates: Recommendation[];
   signals: {
