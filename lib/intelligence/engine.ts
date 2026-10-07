@@ -117,12 +117,12 @@ export function buildIntelligence(request: IntelligenceRequest): IntelligenceRes
       label: hypeLabel(projected ?? currentHype),
       confidence,
     } : null,
-    crowd: {
+    crowd: predictionAvailable ? {
       level: crowdLevel,
       label: crowdLabelText,
       confidence,
       reason: "Search demand, accommodation activity, social attention and momentum are currently pointing toward higher visitor pressure.",
-    },
+    } : null,
     expense: predictionAvailable ? {
       changePercent: signals.hotelPricePressure.value,
       label: signals.hotelPricePressure.value > 0 ? "Above normal" : "Below normal",
