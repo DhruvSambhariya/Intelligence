@@ -322,6 +322,26 @@ export default function Home() {
                 <span className="overline">0{cardIds.indexOf(openCard as any) + 2} / {openCard.toUpperCase()}</span>
                 <h2>{openCard === "crowd" ? intelligence.crowd?.label : openCard === "expense" ? (intelligence.expense?.changePercent == null ? "No price baseline" : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`) : openCard === "weather" ? (intelligence.weather?.summary ?? "No weather data yet") : (intelligence.conditions?.label ?? "No conditions data yet")}</h2>
                 <p>{cardDetail[openCard as keyof typeof cardDetail] ?? "This signal does not have real provider data yet."}</p>
+                {openCard === "weather" && intelligence.weather && (
+                  <div className="weather-detail">
+                    <div className="weather-meta">
+                      <span>SOURCE <strong>{intelligence.weather.source}</strong></span>
+                      <span>CONFIDENCE <strong>{intelligence.weather.confidence}</strong></span>
+                      <span>FORECAST COVERAGE <strong>{intelligence.weather.forecastDaysAvailable} DAYS</strong></span>
+                    </div>
+                    {intelligence.weather.days && intelligence.weather.days.length > 0 && (
+                      <div className="weather-days">
+                        {intelligence.weather.days.map((day) => (
+                          <div key={day.date}>
+                            <span>{day.date}</span>
+                            <strong>{day.temperature.minC}° — {day.temperature.maxC}°</strong>
+                            <small>{day.summary} · {day.precipitationProbability ?? 0}% rain</small>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
