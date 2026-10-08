@@ -44,13 +44,6 @@ export function validateIntelligenceRequest(
 
   if (start <= today) return { ok: false, error: "startDate must be after today" };
   if (end <= start) return { ok: false, error: "endDate must be after startDate" };
-  if (start > latestAllowed || end > latestAllowed) {
-    return {
-      ok: false,
-      error: `both dates must be within ${MAX_PREDICTION_DAYS} days from today`,
-    };
-  }
-
   return {
     ok: true,
     request: {
