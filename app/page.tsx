@@ -319,7 +319,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <span className="overline">0{cardIds.indexOf(openCard) + 2} / {openCard.toUpperCase()}</span>
+                <span className="overline">0{cardIds.indexOf(openCard as any) + 2} / {openCard.toUpperCase()}</span>
                 <h2>{openCard === "crowd" ? intelligence.crowd?.label : openCard === "expense" ? (intelligence.expense?.changePercent == null ? "No price baseline" : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`) : openCard === "weather" ? (intelligence.weather?.summary ?? "No weather data yet") : (intelligence.conditions?.label ?? "No conditions data yet")}</h2>
                 <p>{cardDetail[openCard as keyof typeof cardDetail] ?? "This signal does not have real provider data yet."}</p>
               </>
