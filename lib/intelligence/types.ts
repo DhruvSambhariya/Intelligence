@@ -7,6 +7,7 @@ export type DemandSignal = {
   direction: "up" | "down" | "stable";
   confidence: Confidence;
   source: string;
+  evidence?: string[];
 };
 
 export type IntelligenceRequest = {
@@ -19,20 +20,22 @@ export type IntelligenceRequest = {
 export type HypeIntelligence = {
   current: number;
   momentum: number;
-  projected: number | null;
+  projected: number;
   label: string;
   confidence: Confidence;
 };
 
+export type CrowdLevel = "very_low" | "low" | "less_crowded" | "normal" | "manageable" | "quite_busy" | "very_high";
+
 export type CrowdIntelligence = {
-  level: "very_low" | "low" | "less_crowded" | "normal" | "manageable" | "quite_busy" | "very_high";
+  level: CrowdLevel;
   label: string;
   confidence: Confidence;
   reason: string;
 };
 
 export type ExpenseIntelligence = {
-  changePercent: number;
+  changePercent: number | null;
   label: string;
   confidence: Confidence;
   reason: string;
@@ -41,10 +44,7 @@ export type ExpenseIntelligence = {
 export type WeatherIntelligence = {
   summary: string;
   confidence: Confidence;
-  temperature?: {
-    minC: number;
-    maxC: number;
-  };
+  temperature?: { minC: number; maxC: number };
 };
 
 export type ConditionsIntelligence = {
@@ -61,15 +61,9 @@ export type Recommendation = {
 };
 
 export type IntelligenceResponse = {
-  destination: {
-    name: string;
-    region: string;
-  };
+  destination: { name: string; region: string };
   mode: IntelligenceMode;
-  dates: {
-    start: string | null;
-    end: string | null;
-  };
+  dates: { start: string | null; end: string | null };
   prediction: {
     available: boolean;
     horizonDays: number | null;
