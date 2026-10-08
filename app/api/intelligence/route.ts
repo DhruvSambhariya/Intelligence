@@ -1,49 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildIntelligence } from "@/lib/intelligence/engine";
+import { validateIntelligenceRequest } from "@/lib/intelligence/validation";
 import type { IntelligenceMode } from "@/lib/intelligence/types";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-
-  const destination = params.get("destination")?.trim();
-  const mode = (params.get("mode") ?? "current") as IntelligenceMode;
-  const startDate = params.get("startDate") ?? undefined;
-  const endDate = params.get("endDate") ?? undefined;
-
-  if (!destination) {
-    return NextResponse.json(
-      { error: "destination is required" },
-      { status: 400 }
-    );
-  }
+  const destination = params.get("destination")?.trim() ?? "";
+  const mode = params.get("mode") ?? "current";
 
   if (mode !== "current" && mode !== "date") {
-    return NextResponse.json(
-      { error: "mode must be current or date" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "mode must be current or date" }, { status: 400 });
   }
 
-  if (mode === "date" && !startDate) {
-    return NextResponse.json(
-      { error: "startDate is required when mode=date" },
-      { status: 400 }
-    );
+  const validation = validateIntelligenceRequest({
+    destination,
+    mode: mode as IntelligenceMode,
+    startDate: params.get("startDate") ?? undefined,
+    endDate: params.get("endDate") ?? undefined,
+  });
+
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
-  if (mode === "date" && endDate && new Date(endDate) < new Date(startDate!)) {
+  try {
+    const intelligence = await buildIntelligence(validation.request);
+    return NextResponse.json(intelligence);
+  } catch (error) {
+    console.error("Intelligence request failed", error);
     return NextResponse.json(
-      { error: "endDate cannot be before startDate" },
-      { status: 400 }
+      { error: "Unable to build destination intelligence" },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(
-    buildIntelligence({
-      destination,
-      mode,
-      startDate,
-      endDate,
-    })
-  );
 }
