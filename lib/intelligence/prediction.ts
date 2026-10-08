@@ -89,9 +89,18 @@ export function calculatePredictions(snapshot: SignalSnapshot) {
     confidence: avgConfidence,
   };
 
+  const crowdLabel = labelForCrowd(crowdScore);
+  const crowdLevel =
+    crowdScore < 15 ? "very_low" :
+    crowdScore < 30 ? "low" :
+    crowdScore < 45 ? "less_crowded" :
+    crowdScore < 60 ? "normal" :
+    crowdScore < 70 ? "manageable" :
+    crowdScore < 85 ? "quite_busy" : "very_high";
+
   const crowd: CrowdIntelligence = {
-    level: labelForCrowd(crowdScore),
-    label: labelForCrowd(crowdScore),
+    level: crowdLevel,
+    label: crowdLabel,
     confidence: avgConfidence,
     reason: "Estimated from demand, accommodation, flight, social and event signals.",
   };
