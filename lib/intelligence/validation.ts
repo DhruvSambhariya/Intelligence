@@ -39,9 +39,6 @@ export function validateIntelligenceRequest(
   }
 
   const today = todayUtc();
-  const latestAllowed = new Date(today);
-  latestAllowed.setUTCDate(latestAllowed.getUTCDate() + MAX_PREDICTION_DAYS);
-
   if (start <= today) return { ok: false, error: "startDate must be after today" };
   if (end <= start) return { ok: false, error: "endDate must be after startDate" };
   return {
