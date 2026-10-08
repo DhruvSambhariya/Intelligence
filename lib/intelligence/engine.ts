@@ -1,4 +1,5 @@
 import { mockProvider } from "./providers/mock";
+import { getOpenMeteoWeather } from "./providers/open-meteo";
 import { calculatePredictions } from "./prediction";
 import type { IntelligenceRequest, IntelligenceResponse } from "./types";
 import { MAX_PREDICTION_DAYS } from "./validation";
@@ -34,7 +35,13 @@ function signalResponse(snapshot: Awaited<ReturnType<typeof mockProvider.collect
 }
 
 export async function buildIntelligence(request: IntelligenceRequest): Promise<IntelligenceResponse> {
-  const snapshot = await mockProvider.collect(request);
+  const [snapshot, weather] = await Promise.all([
+    mockProvider.collect(request),
+    getOpenMeteoWeather(request).catch((error) => {
+      console.error("Open-Meteo weather provider failed", error);
+      return null;
+    }),
+  ]);
   const predictions = calculatePredictions(snapshot);
   const horizonDays = request.mode === "date" ? daysFromToday(request.startDate) : null;
   const available = request.mode === "current" || (horizonDays !== null && horizonDays >= 1 && horizonDays <= MAX_PREDICTION_DAYS);
@@ -58,7 +65,7 @@ export async function buildIntelligence(request: IntelligenceRequest): Promise<I
       hype: null,
       crowd: null,
       expense: null,
-      weather: null,
+      weather,
       conditions: null,
       alternatives: [],
       betterDates: [],
@@ -71,7 +78,7 @@ export async function buildIntelligence(request: IntelligenceRequest): Promise<I
     hype: predictions.hype,
     crowd: predictions.crowd,
     expense: predictions.expense,
-    weather: null,
+    weather,
     conditions: null,
     alternatives: [],
     betterDates: [],
