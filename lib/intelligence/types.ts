@@ -41,10 +41,25 @@ export type ExpenseIntelligence = {
   reason: string;
 };
 
+export type WeatherDay = {
+  date: string;
+  summary: string;
+  temperature: { minC: number; maxC: number };
+  precipitationProbability: number | null;
+  precipitationMm: number | null;
+  windMaxKmh: number | null;
+};
+
 export type WeatherIntelligence = {
   summary: string;
   confidence: Confidence;
+  source: string;
+  forecastDaysAvailable: number;
   temperature?: { minC: number; maxC: number };
+  precipitationProbability?: number | null;
+  precipitationMm?: number | null;
+  windMaxKmh?: number | null;
+  days?: WeatherDay[];
 };
 
 export type ConditionsIntelligence = {
