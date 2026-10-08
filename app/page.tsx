@@ -3,28 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Mode = "current" | "date";
-
 type Intelligence = {
   destination: { name: string; region: string };
   mode: Mode;
   dates: { start: string | null; end: string | null };
   prediction: { available: boolean; horizonDays: number | null; confidence: string | null; message?: string };
   hype: { current: number; momentum: number; projected: number | null; label: string; confidence: string } | null;
-  crowd: { label: string; confidence: string; reason: string } | null;
-  expense: { changePercent: number; label: string; confidence: string; reason: string } | null;
+  crowd: { level: string; label: string; confidence: string; reason: string } | null;
+  expense: { changePercent: number | null; label: string; confidence: string; reason: string } | null;
   weather: { summary: string; confidence: string; temperature?: { minC: number; maxC: number } } | null;
   conditions: { label: string; status: string; confidence: string; reason: string } | null;
   alternatives: { name: string; region: string; reason: string }[];
   betterDates: { name: string; region: string; reason: string }[];
-};
-
-type Signal = {
-  id: string;
-  index: string;
-  label: string;
-  value: string;
-  note: string;
-  detail: string;
+  signals: Record<string, { value: number; direction: string; confidence: string; source: string; evidence?: string[] }>;
 };
 
 const destinations = [
@@ -33,108 +24,101 @@ const destinations = [
   { name: "Rishikesh", region: "Uttarakhand", hint: "River town" },
 ];
 
-const signals: Signal[] = [
-  {
-    id: "crowd",
-    index: "02",
-    label: "Crowd",
-    value: "Quite busy",
-    note: "especially midday",
-    detail: "Search demand, accommodation activity, seasonality and the selected dates point to higher visitor pressure than normal.",
-  },
-  {
-    id: "expense",
-    index: "03",
-    label: "Expense",
-    value: "+27%",
-    note: "above normal",
-    detail: "Comparable accommodation and travel demand are currently carrying higher price pressure for these dates.",
-  },
-  {
-    id: "weather",
-    index: "04",
-    label: "Weather",
-    value: "18°—25°",
-    note: "comfortable window",
-    detail: "The date view will expand into morning, afternoon, evening, rain risk, wind and forecast confidence.",
-  },
-  {
-    id: "conditions",
-    index: "05",
-    label: "Conditions",
-    value: "Watch",
-    note: "check before leaving",
-    detail: "Destination-level advisories, closures, hazards and disruptions — not route traffic.",
-  },
-];
+const cardIds = ["crowd", "expense", "weather", "conditions"] as const;
 
 export default function Home() {
-  const [destination, setDestination] = useState(destinations[0]);
-  const [startDate, setStartDate] = useState("2026-10-10");
-  const [endDate, setEndDate] = useState("2026-10-12");
+  const [destination, setDestination] = useState<(typeof destinations)[number] | null>(null);
+  const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<Mode>("current");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [todayIso, setTodayIso] = useState("");
+  const [maxDate, setMaxDate] = useState("");
   const [intelligence, setIntelligence] = useState<Intelligence | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>("current");
+  const [openCard, setOpenCard] = useState<string | null>(null);
   const [dark, setDark] = useState(false);
-  const [request, setRequest] = useState({ destination: "Manali", mode: "current" as Mode, startDate: "2026-10-10", endDate: "2026-10-12" });
-
-  const formatDate = (value: string) => {
-    const parts = value.split("-");
-    if (parts.length !== 3) return "Select date";
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return parts[2] + " " + (months[Number(parts[1]) - 1] ?? "");
-  };
-  const dates = startDate && endDate ? formatDate(startDate) + " — " + formatDate(endDate) : "Select dates";
-  const invalidDates = mode === "date" && (!startDate || !endDate || endDate < startDate);
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadIntelligence() {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({
-        destination: request.destination,
-        mode: request.mode,
-      });
-      if (request.mode === "date") {
-        params.set("startDate", request.startDate);
-        params.set("endDate", request.endDate);
-      }
-
-      try {
-        const response = await fetch("/api/intelligence?" + params.toString(), { signal: controller.signal });
-        if (!response.ok) throw new Error("Intelligence request failed");
-        setIntelligence((await response.json()) as Intelligence);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setError("Unable to load destination intelligence.");
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    loadIntelligence();
-    return () => controller.abort();
-  }, [request]);
-
-  const displayHype = intelligence?.hype?.current ?? null;
-  const displayMomentum = intelligence?.hype?.momentum ?? null;
-  const displayProjected = intelligence?.hype.projected ?? displayHype;
-  const displayCrowd = intelligence?.crowd?.label ?? null;
-  const displayExpense = intelligence?.expense?.changePercent ?? null;
-  const displayWeather = intelligence?.weather?.temperature
-    ? `${intelligence.weather.temperature.minC}°—${intelligence.weather.temperature.maxC}°`
-    : "Loading…";
-  const displayConditions = intelligence?.conditions?.label ?? null;
+    const today = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const max = new Date(today);
+    max.setDate(today.getDate() + 25);
+    setTodayIso(iso(tomorrow));
+    setMaxDate(iso(max));
+  }, []);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? destinations.filter((d) => `${d.name} ${d.region}`.toLowerCase().includes(q)) : [];
+    if (!q) return [];
+    return destinations.filter((d) => `${d.name} ${d.region}`.toLowerCase().includes(q));
   }, [query]);
+
+  const dates = startDate && endDate
+    ? `${startDate.slice(8)} ${new Date(startDate + "T00:00:00").toLocaleString("en", { month: "short" })} — ${endDate.slice(8)} ${new Date(endDate + "T00:00:00").toLocaleString("en", { month: "short" })}`
+    : "Select dates";
+
+  const invalidDates =
+    mode === "date" &&
+    (!startDate || !endDate || endDate <= startDate ||
+      (!!maxDate && (startDate > maxDate || endDate > maxDate)));
+
+  async function runIntelligence() {
+    if (!destination || loading || invalidDates) return;
+    setLoading(true);
+    setError(null);
+    setIntelligence(null);
+    setOpenCard(null);
+
+    const params = new URLSearchParams({
+      destination: destination.name,
+      mode,
+    });
+    if (mode === "date") {
+      params.set("startDate", startDate);
+      params.set("endDate", endDate);
+    }
+
+    try {
+      const response = await fetch("/api/intelligence?" + params.toString());
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Intelligence request failed");
+      setIntelligence(body as Intelligence);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load destination intelligence.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function selectMode(next: Mode) {
+    setMode(next);
+    setIntelligence(null);
+    setOpenCard(null);
+    setError(null);
+    if (next === "current") {
+      setStartDate("");
+      setEndDate("");
+    }
+  }
+
+  function selectDestination(item: (typeof destinations)[number]) {
+    setDestination(item);
+    setQuery("");
+    setIntelligence(null);
+    setOpenCard(null);
+  }
+
+  const hype = intelligence?.hype;
+  const cardDetail = {
+    crowd: intelligence?.crowd?.reason,
+    expense: intelligence?.expense?.reason,
+    weather: intelligence?.weather?.summary,
+    conditions: intelligence?.conditions?.reason,
+  };
 
   return (
     <main className={`site ${dark ? "dark" : ""}`}>
@@ -142,39 +126,31 @@ export default function Home() {
 
       <header className="nav">
         <a className="logo" href="#" aria-label="Sync and Explore">
-          <span className="logo-symbol">S</span>
-          <span>SYNC <i>&amp;</i> EXPLORE</span>
+          <span className="logo-symbol">S</span><span>SYNC <i>&amp;</i> EXPLORE</span>
         </a>
         <div className="nav-right">
           <span className="nav-label">DESTINATION INTELLIGENCE</span>
           <button className="theme-toggle" onClick={() => setDark(!dark)} aria-label="Toggle theme">
-            <span className={dark ? "active" : ""}>☾</span>
-            <span className={!dark ? "active" : ""}>☼</span>
+            <span className={dark ? "active" : ""}>☾</span><span className={!dark ? "active" : ""}>☼</span>
           </button>
         </div>
       </header>
 
       <section className="hero">
-        <div className="hero-meta">
-          <span>01</span>
-          <span>THE INTELLIGENCE LAYER</span>
-        </div>
+        <div className="hero-meta"><span>01</span><span>THE INTELLIGENCE LAYER</span></div>
         <div className="hero-copy">
           <p className="overline">TRAVEL BEFORE YOU TRAVEL</p>
           <h1>Know the place.<br /><em>before you go.</em></h1>
-          <p className="lede">
-            Destination intelligence built from the signals people leave behind —
-            searches, bookings, prices, social attention, weather and what is changing around a place.
-          </p>
+          <p className="lede">Destination intelligence built from the signals people leave behind — searches, bookings, prices, social attention, weather and what is changing around a place.</p>
         </div>
       </section>
 
       <section className="command">
         <div className="command-top">
           <div className="command-label"><span className="pulse" /> ANALYSE A DESTINATION</div>
-          <div className="mode-switch" aria-label="Intelligence mode">
-            <button className={mode === "current" ? "active" : ""} onClick={() => { setMode("current"); setIntelligence(null); setOpen(null); }}>CURRENT</button>
-            <button className={mode === "date" ? "active" : ""} onClick={() => { setMode("date"); setIntelligence(null); setOpen(null); }}>SELECT DATES</button>
+          <div className="mode-switch">
+            <button className={mode === "current" ? "active" : ""} onClick={() => selectMode("current")}>CURRENT</button>
+            <button className={mode === "date" ? "active" : ""} onClick={() => selectMode("date")}>SELECT DATES</button>
           </div>
         </div>
 
@@ -182,16 +158,15 @@ export default function Home() {
           <div className="command-field search-wrap">
             <small>WHERE</small>
             <input
-              value={query || destination.name}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setQuery("")}
+              value={query || destination?.name || ""}
+              onChange={(e) => { setQuery(e.target.value); setDestination(null); setIntelligence(null); }}
               placeholder="Search a city"
               aria-label="Search destination"
             />
             {matches.length > 0 && (
               <div className="suggestions">
                 {matches.map((item) => (
-                  <button key={item.name} onClick={() => { setDestination(item); setQuery(""); setIntelligence(null); setOpen(null); }}>
+                  <button key={item.name} onClick={() => selectDestination(item)}>
                     {item.name}<span>{item.region} · {item.hint}</span>
                   </button>
                 ))}
@@ -202,184 +177,158 @@ export default function Home() {
           <div className={`command-field date-field ${mode === "current" ? "disabled" : ""}`}>
             <small>{mode === "current" ? "WHEN · CURRENT" : "WHEN · YOUR DATES"}</small>
             {mode === "current" ? (
-              <input value="Right now" readOnly disabled aria-label="Current intelligence" />
+              <input value="Right now" readOnly aria-label="Current intelligence" />
             ) : (
               <div className="date-inputs">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Start date" />
+                <input type="date" min={todayIso} max={maxDate} value={startDate} onChange={(e) => { setStartDate(e.target.value); setIntelligence(null); }} aria-label="Start date" />
                 <span>—</span>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="End date" />
+                <input type="date" min={startDate || todayIso} max={maxDate} value={endDate} onChange={(e) => { setEndDate(e.target.value); setIntelligence(null); }} aria-label="End date" />
               </div>
             )}
           </div>
 
-          <button className="analyse" onClick={() => { setOpen(null); setRequest({ destination: destination.name, mode, startDate, endDate }); }} disabled={loading || invalidDates}>
-            RUN INTELLIGENCE <span>↗</span>
+          <button className="analyse" onClick={runIntelligence} disabled={loading || !destination || invalidDates}>
+            {loading ? "READING SIGNALS…" : "RUN INTELLIGENCE"} <span>↗</span>
           </button>
         </div>
+        {mode === "date" && (
+          <div className={`date-validation ${invalidDates ? "invalid" : ""}`}>
+            {startDate && endDate && endDate <= startDate ? "End date must be after start date." : `Choose dates within the next 25 days.`}
+          </div>
+        )}
+        {error && <div className="api-status error">{error}</div>}
       </section>
 
-      <section className="destination">
-        <div className="destination-index">02 / DESTINATION</div>
-        <div className="destination-main">
-          <div>
-            <h2>{destination.name}<span>, {destination.region}</span></h2>
-            <p>
-              {mode === "current"
-                ? "What the signals say about the destination right now."
-                : <>What the signals suggest for <strong>{dates}</strong>.</>}
-            </p>
-          </div>
-          <div className="date-chip">{mode === "current" ? "CURRENT" : dates}</div>
-        </div>
-      </section>
-
-      {mode === "date" && (
-        <section className="prediction-window">
-          <div>
-            <span className="window-kicker">PREDICTION WINDOW</span>
-            <strong>
-              {intelligence?.prediction.available
-                ? `Reliable date-specific intelligence · ${intelligence.prediction.horizonDays} days ahead.`
-                : intelligence?.prediction.message ?? "Reliable date-specific predictions are unavailable for these dates."}
-            </strong>
-          </div>
-          <span className="window-state">
-            {intelligence?.prediction.available ? "WITHIN WINDOW" : "OUTSIDE WINDOW"}
-          </span>
+      {!intelligence && !loading && (
+        <section className="empty-state">
+          <span>02 / READY</span>
+          <h2>Search a destination<br /><em>to see its intelligence.</em></h2>
+          <p>Nothing is calculated until you run the analysis.</p>
         </section>
       )}
 
-      <section className="intel">
-        <div className="intel-intro">
-          <span className="section-no">03</span>
-          <div>
-            <p className="overline">SIGNALS, NOT ONE SCORE</p>
-            <h3>Read the place<br /><em>before you go.</em></h3>
-          </div>
-          <p className="intro-note">
-            Each signal answers a different question. Together they reveal what people are doing,
-            what demand is becoming, and what your dates may feel like.
-          </p>
-        </div>
+      {loading && (
+        <section className="empty-state"><span>02 / ANALYSING</span><h2>Reading the signals.</h2><p>Search, accommodation, flight and social signals are being assembled.</p></section>
+      )}
 
-        <div className="signal-grid">
-          <article className="signal signal-hype">
-            <div className="signal-head"><span>01</span><span>OPEN</span></div>
-            <div className="hype-content">
+      {intelligence && (
+        <>
+          <section className="destination">
+            <div className="destination-index">02 / DESTINATION</div>
+            <div className="destination-main">
               <div>
-                <p className="signal-label">Hype</p>
-                <div className="hype-row">
-                  <div className="signal-value">{displayHype === null ? "—" : displayHype}</div>
-                  <span className="hype-label">HAVING A MOMENT</span>
-                </div>
+                <h2>{destination?.name}<span>, {destination?.region}</span></h2>
+                <p>{mode === "current" ? "What the signals say about the destination right now." : <>What the signals suggest for <strong>{dates}</strong>.</>}</p>
               </div>
-              <div className="hype-meter" aria-label="Hype level 78 out of 100">
-                <span style={{ width: `${displayHype ?? 0}%` }} />
-              </div>
-              <div className="hype-scale"><span>QUIET</span><span>HEATING UP</span><span>PEAK</span></div>
-              <div className="momentum">
-                <div>
-                  <span>MOMENTUM</span>
-                  <strong>{displayMomentum === null ? "—" : "+" + displayMomentum + "%"}</strong>
-                </div>
-                <p>{intelligence?.hype?.label ?? (intelligence?.prediction.available === false ? "Prediction unavailable for these dates." : "Reading current signals…")}</p>
-              </div>
+              <div className="date-chip">{mode === "current" ? "CURRENT" : dates}</div>
             </div>
-          </article>
+          </section>
 
-          {signals.map((card) => {
-            const expanded = open === card.id;
-            return (
-              <article
-                key={card.id}
-                className={`signal signal-${card.id} ${expanded ? "expanded" : ""}`}
-                onClick={() => setOpen(expanded ? null : card.id)}
-              >
-                <div className="signal-head"><span>{card.index}</span><span>{expanded ? "CLOSE" : "OPEN"}</span></div>
-                <div className="signal-body">
-                  <p className="signal-label">{card.label}</p>
-                  <div className="signal-value">
-                    {card.id === "crowd" ? (displayCrowd ?? "—") :
-                     card.id === "expense" ? (displayExpense === null ? "—" : "+" + displayExpense + "%") :
-                     card.id === "weather" ? (displayWeather ?? "—") :
-                     (displayConditions ?? "—")}
-                  </div>
-                  <p className="signal-note">{card.note}</p>
+          {mode === "date" && (
+            <section className="prediction-window">
+              <div>
+                <span className="window-kicker">PREDICTION WINDOW</span>
+                <strong>{intelligence.prediction.available ? `Reliable date-specific intelligence · ${intelligence.prediction.horizonDays} days ahead.` : intelligence.prediction.message}</strong>
+              </div>
+              <span className="window-state">{intelligence.prediction.available ? "WITHIN WINDOW" : "OUTSIDE WINDOW"}</span>
+            </section>
+          )}
+
+          <section className="intel">
+            <div className="intel-intro">
+              <span className="section-no">03</span>
+              <div><p className="overline">SIGNALS, NOT ONE SCORE</p><h3>Read the place<br /><em>before you go.</em></h3></div>
+              <p className="intro-note">Each signal answers a different question. Together they reveal what people are doing, what demand is becoming, and what your dates may feel like.</p>
+            </div>
+
+            <div className="signal-grid">
+              <article className="signal signal-hype" onClick={() => setOpenCard("hype")}>
+                <div className="signal-head"><span>01</span><span>OPEN</span></div>
+                <div className="hype-content">
+                  <p className="signal-label">Hype</p>
+                  <div className="hype-row"><div className="signal-value">{hype?.current ?? "—"}</div><span className="hype-label">{hype?.label ?? "—"}</span></div>
+                  <div className="hype-meter" aria-label={`Hype level ${hype?.current ?? 0} out of 100`}><span style={{ width: `${hype?.current ?? 0}%` }} /></div>
+                  <div className="hype-scale"><span>QUIET</span><span>HEATING UP</span><span>PEAK</span></div>
+                  <div className="momentum"><div><span>MOMENTUM</span><strong>{hype ? `${hype.momentum >= 0 ? "+" : ""}${hype.momentum}%` : "—"}</strong></div><p>{hype ? `Projected hype: ${hype.projected}` : "—"}</p></div>
                 </div>
-                <div className="signal-line"><span /><span>{expanded ? "−" : "+"}</span></div>
-                {expanded && (
-                  <div className="signal-detail">
-                    <p>{card.detail}</p>
-                    <div className="micro"><span>DATE-SPECIFIC</span><span>MOCK SIGNAL</span></div>
-                  </div>
-                )}
               </article>
-            );
-          })}
-        </div>
-      </section>
 
-      <section className="insight">
-        <div className="insight-mark">06</div>
-        <div className="insight-copy">
-          <p className="overline">THE USEFUL PART</p>
-          <h3>People are<br />telling us something.</h3>
-          <p>
-            Search behaviour, hotel demand, price movement, flight cycles and social attention
-            become clues about what your destination may feel like when you arrive.
-          </p>
-        </div>
-        <div className="insight-data">
-          <div><span>HYPE</span><strong>{displayHype === null ? "—" : displayHype}</strong></div>
-          <div><span>MOMENTUM</span><strong>+{displayMomentum}%</strong></div>
-          <div><span>PRICE PRESSURE</span><strong>{displayExpense === null ? "—" : "+" + displayExpense + "%"}</strong></div>
-          <p>Signals agree: interest is rising while prices are already moving above normal.</p>
-        </div>
-      </section>
+              {cardIds.map((id, i) => {
+                const value =
+                  id === "crowd" ? intelligence.crowd?.label :
+                  id === "expense" ? (intelligence.expense?.changePercent == null ? null : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`) :
+                  id === "weather" ? (intelligence.weather?.temperature ? `${intelligence.weather.temperature.minC}°—${intelligence.weather.temperature.maxC}°` : null) :
+                  intelligence.conditions?.label;
+                const notes = { crowd: "visitor pressure", expense: "compared with normal", weather: "forecast", conditions: "destination conditions" };
+                const labels = { crowd: "Crowd", expense: "Expense", weather: "Weather", conditions: "Conditions" };
+                const opened = openCard === id;
+                return (
+                  <article key={id} className={`signal signal-${id}`} onClick={() => setOpenCard(id)}>
+                    <div className="signal-head"><span>0{i + 2}</span><span>OPEN</span></div>
+                    <div className="signal-body"><p className="signal-label">{labels[id]}</p><div className="signal-value">{value ?? "No data yet"}</div><p className="signal-note">{notes[id]}</p></div>
+                    <div className="signal-line"><span /><span>+</span></div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
 
-      <section className="alternatives">
-        <div className="section-line"><span>07 / BETTER ALTERNATIVES</span><span>BASED ON YOUR DATES</span></div>
-        <div className="alternative-head">
-          <h3>Maybe there&apos;s<br /><em>another way.</em></h3>
-          <p>Not just nearby places. Alternatives chosen from the balance of crowd, cost, weather, hype and conditions.</p>
-        </div>
-        <div className="alternative-list">
-          {[
-            ["Naggar", "Himachal Pradesh", "quieter", "−22% price pressure"],
-            ["Jibhi", "Himachal Pradesh", "peaceful", "−19% price pressure"],
-            ["Tirthan Valley", "Himachal Pradesh", "very quiet", "−28% price pressure"],
-          ].map(([name, region, mood, stat], index) => (
-            <button className="alternative" key={name}>
-              <span className="alt-index">0{index + 1}</span>
-              <span className="alt-place"><strong>{name}</strong><small>{region}</small></span>
-              <span className="alt-mood">{mood}</span>
-              <span className="alt-stat">{stat}</span>
-              <span className="alt-arrow">↗</span>
-            </button>
-          ))}
-        </div>
-      </section>
+          <section className="insight">
+            <div className="insight-mark">06</div>
+            <div className="insight-copy"><p className="overline">THE USEFUL PART</p><h3>People are<br />telling us something.</h3><p>Search behaviour, hotel demand, price movement, flight cycles and social attention become clues about what your destination may feel like when you arrive.</p></div>
+            <div className="insight-data">
+              <div><span>HYPE</span><strong>{hype?.current ?? "—"}</strong></div>
+              <div><span>MOMENTUM</span><strong>{hype ? `${hype.momentum >= 0 ? "+" : ""}${hype.momentum}%` : "—"}</strong></div>
+              <div><span>PRICE PRESSURE</span><strong>{intelligence.expense?.changePercent == null ? "—" : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`}</strong></div>
+            </div>
+          </section>
 
-      <section className="dates">
-        <div className="section-line"><span>08 / BETTER DATES</span><span>KEEP {destination.name.toUpperCase()}</span></div>
-        <div className="dates-inner">
-          <h3>Keep the place.<br /><em>Change the moment.</em></h3>
-          <div className="date-options">
-            <button><span>17 — 19 OCT</span><strong>Manageable</strong><small>Lower crowd pressure</small><b>→</b></button>
-            <button className="selected"><span>24 — 26 OCT</span><strong>Peaceful</strong><small>Lower demand · similar weather</small><b>→</b></button>
+          {intelligence.alternatives.length > 0 && (
+            <section className="alternatives">
+              <div className="section-line"><span>07 / BETTER ALTERNATIVES</span><span>BASED ON YOUR DATES</span></div>
+              <div className="alternative-head"><h3>Maybe there&apos;s<br /><em>another way.</em></h3></div>
+              <div className="alternative-list">{intelligence.alternatives.map((item, index) => <button className="alternative" key={item.name}><span className="alt-index">0{index + 1}</span><span className="alt-place"><strong>{item.name}</strong><small>{item.region}</small></span><span className="alt-mood">{item.reason}</span><span className="alt-arrow">↗</span></button>)}</div>
+            </section>
+          )}
+
+          {intelligence.betterDates.length > 0 && (
+            <section className="dates">
+              <div className="section-line"><span>08 / BETTER DATES</span><span>KEEP {destination?.name.toUpperCase()}</span></div>
+              <div className="dates-inner"><h3>Keep the place.<br /><em>Change the moment.</em></h3><div className="date-options">{intelligence.betterDates.map((item) => <button key={item.name}><span>{item.name}</span><strong>{item.reason}</strong><b>→</b></button>)}</div></div>
+            </section>
+          )}
+
+          <section className="future-note">
+            <span>LOOKING TOO FAR AHEAD?</span>
+            <div><h3><strong>Nice try.</strong><br />We&apos;re an intelligence engine,<br /><em>not a crystal ball.</em></h3><p>Reliable date-specific predictions are only available within our current prediction window. We can still show what we already know — such as fixed events, major festivals and other known information.</p></div>
+          </section>
+        </>
+      )}
+
+      {openCard && intelligence && (
+        <div className="card-overlay" role="dialog" aria-modal="true" onClick={() => setOpenCard(null)}>
+          <div className="card-overlay-panel" onClick={(e) => e.stopPropagation()}>
+            <button className="overlay-close" onClick={() => setOpenCard(null)}>CLOSE ×</button>
+            {openCard === "hype" ? (
+              <>
+                <span className="overline">01 / HYPE + MOMENTUM</span>
+                <h2>{hype?.current ?? "—"} <em>{hype?.label ?? ""}</em></h2>
+                <div className="overlay-meter"><span style={{ width: `${hype?.current ?? 0}%` }} /></div>
+                <div className="overlay-stats"><div><small>CURRENT HYPE</small><strong>{hype?.current ?? "—"}</strong></div><div><small>MOMENTUM</small><strong>{hype ? `${hype.momentum >= 0 ? "+" : ""}${hype.momentum}%` : "—"}</strong></div><div><small>PROJECTED</small><strong>{hype?.projected ?? "—"}</strong></div></div>
+                <p>Hype combines the available demand signals. Momentum describes how quickly those signals are changing and is used to estimate the selected-date level.</p>
+              </>
+            ) : (
+              <>
+                <span className="overline">0{cardIds.indexOf(openCard) + 2} / {openCard.toUpperCase()}</span>
+                <h2>{openCard === "crowd" ? intelligence.crowd?.label : openCard === "expense" ? (intelligence.expense?.changePercent == null ? "No price baseline" : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`) : openCard === "weather" ? (intelligence.weather?.summary ?? "No weather data yet") : (intelligence.conditions?.label ?? "No conditions data yet")}</h2>
+                <p>{cardDetail[openCard as keyof typeof cardDetail] ?? "This signal does not have real provider data yet."}</p>
+              </>
+            )}
           </div>
         </div>
-      </section>
+      )}
 
-      <section className="future-note">
-        <span>LOOKING TOO FAR AHEAD?</span>
-        <div>
-          <h3><strong>Nice try.</strong><br />We&apos;re an intelligence engine,<br /><em>not a crystal ball.</em></h3>
-          <p>Reliable date-specific predictions are only available within our current prediction window. We can still show what we already know — such as fixed events, major festivals and other known information.</p>
-        </div>
-      </section>
-
-      <footer><span>SYNC &amp; EXPLORE</span><span>DESTINATION INTELLIGENCE / PROTOTYPE 02</span></footer>
+      <footer><span>SYNC &amp; EXPLORE</span><span>DESTINATION INTELLIGENCE / PROTOTYPE 03</span></footer>
     </main>
   );
 }
