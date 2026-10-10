@@ -80,16 +80,18 @@ export async function getWikimediaAttention(request: IntelligenceRequest): Promi
     const daysAhead = request.mode === "date" && request.startDate
       ? Math.max(1, Math.ceil((new Date(request.startDate + "T00:00:00Z").getTime() - Date.now()) / 86400000))
       : 1;
-    const projected = Math.round(clamp(current + momentum * Math.min(daysAhead, 7) * 0.035, 0, 100));
+    const projected = daysAhead <= 7
+      ? Math.round(clamp(current + momentum * daysAhead * 0.035, 0, 100))
+      : null;
     const direction = changePercent >= 8 ? "up" : changePercent <= -8 ? "down" : "stable";
     return {
-      hype: { current, momentum, projected, label: hypeLabel(current), confidence: "low" },
+      hype: projected === null ? null : { current, momentum, projected, label: hypeLabel(current), confidence: "low" },
       signal: {
         value: current, direction, confidence: "low", source: "Wikimedia pageviews",
         evidence: [
           `Wikipedia article: “${title}”.`,
           `Recent 7-day average pageviews changed ${changePercent >= 0 ? "up" : "down"} ${Math.abs(changePercent)}% versus the preceding 7 days.`,
-          "Page views are a limited public-attention proxy; they are not searches, bookings or visitor counts.",
+          "Page views are a limited public-attention proxy; they are not searches, bookings or visitor counts.",\n          ...(projected === null ? ["No date-specific attention projection is shown more than 7 days ahead because this simple trend is not a validated long-range forecast."] : []),
         ],
       },
     };
