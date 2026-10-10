@@ -228,7 +228,7 @@ export default function Home() {
             <section className="prediction-window">
               <div>
                 <span className="window-kicker">PREDICTION WINDOW</span>
-                <strong>{intelligence.prediction.available ? `Reliable date-specific intelligence · ${intelligence.prediction.horizonDays} days ahead.` : intelligence.prediction.message}</strong>
+                <strong>{intelligence.prediction.message ?? (intelligence.prediction.available ? `Date window · ${intelligence.prediction.horizonDays} days ahead.` : "Date-specific predictions are unavailable.")}</strong>
               </div>
               <span className="window-state">{intelligence.prediction.available ? "WITHIN WINDOW" : "OUTSIDE WINDOW"}</span>
             </section>
