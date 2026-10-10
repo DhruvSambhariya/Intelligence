@@ -131,3 +131,15 @@ If no defensible same-room baseline exists, the system should report insufficien
 No production provider is locked yet.
 
 The next engineering step is to implement the normalized provider interfaces and then integrate the first accessible real sources without changing the product contract.
+
+
+## 13. First free/open-data implementation (October 2026)
+
+The first implementation now uses:
+- **Open-Meteo** for live weather and up to its returned forecast coverage. If the selected dates are outside returned coverage, the selected-date weather result is explicitly unavailable rather than showing unrelated forecast days.
+- **Wikimedia pageviews** for a low-confidence public-attention proxy. The system compares recent and preceding 7-day average article pageviews. This is not a search-volume, booking, crowd or visitor-count metric.
+- **GDELT DOC 2.0** for recent destination-related news headlines containing selected hazard terms. Matching headlines are shown as unverified media mentions to review, not as official advisories. No matches do not mean conditions are safe.
+
+The mock demand provider has been removed from the live intelligence engine. Hotel demand, flights, social interest, crowd level, and expense percentage remain unavailable until defensible data are available. In particular, expense stays blank without a comparable same-property/same-room baseline. No fake values are substituted.
+
+These public sources make the experience more informative immediately, but they do not yet constitute a validated crowd or price prediction model. Open-Meteo's free tier is subject to its non-commercial terms; confirm the applicable licence before commercial deployment.
