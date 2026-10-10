@@ -3,7 +3,7 @@ export type IntelligenceMode = "current" | "date";
 export type Confidence = "high" | "moderate" | "low";
 
 export type DemandSignal = {
-  value: number;
+  value: number | null;
   direction: "up" | "down" | "stable";
   confidence: Confidence;
   source: string;
