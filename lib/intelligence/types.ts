@@ -67,6 +67,8 @@ export type ConditionsIntelligence = {
   label: string;
   confidence: Confidence;
   reason: string;
+  source?: string;
+  items?: { title: string; url: string; source: string; date: string | null }[];
 };
 
 export type Recommendation = {
@@ -93,10 +95,10 @@ export type IntelligenceResponse = {
   alternatives: Recommendation[];
   betterDates: Recommendation[];
   signals: {
-    searchDemand: DemandSignal;
-    hotelDemand: DemandSignal;
-    hotelPricePressure: DemandSignal;
-    flightDemand: DemandSignal;
-    socialInterest: DemandSignal;
+    searchDemand: DemandSignal | null;
+    hotelDemand: DemandSignal | null;
+    hotelPricePressure: DemandSignal | null;
+    flightDemand: DemandSignal | null;
+    socialInterest: DemandSignal | null;
   };
 };
