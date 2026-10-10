@@ -316,6 +316,19 @@ export default function Home() {
                 <div className="overlay-meter"><span style={{ width: `${hype?.current ?? 0}%` }} /></div>
                 <div className="overlay-stats"><div><small>CURRENT HYPE</small><strong>{hype?.current ?? "—"}</strong></div><div><small>MOMENTUM</small><strong>{hype ? `${hype.momentum >= 0 ? "+" : ""}${hype.momentum}%` : "—"}</strong></div><div><small>PROJECTED</small><strong>{hype?.projected ?? "—"}</strong></div></div>
                 <p>Hype uses recent Wikipedia page-view movement as a limited public-attention proxy, not as a count of searches, bookings or visitors. Momentum compares the latest 7-day average with the preceding 7 days. This early signal is low-confidence and is not yet calibrated against real travel outcomes.</p>
+                {intelligence.signals.searchDemand && (
+                  <div className="weather-detail">
+                    <div className="weather-meta">
+                      <span>SOURCE <strong>{intelligence.signals.searchDemand.source}</strong></span>
+                      <span>CONFIDENCE <strong>{intelligence.signals.searchDemand.confidence}</strong></span>
+                    </div>
+                    <div className="weather-days">
+                      {(intelligence.signals.searchDemand.evidence ?? []).map((item) => (
+                        <div key={item}><strong>{item}</strong></div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>
