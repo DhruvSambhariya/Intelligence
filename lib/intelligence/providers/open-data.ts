@@ -100,7 +100,7 @@ export async function getWikimediaAttention(request: IntelligenceRequest): Promi
   }
 }
 
-const HAZARD_TERMS = /landslide|flood|flash flood|avalanche|earthquake|wildfire|forest fire|heavy rain|extreme rain|weather warning|road.?closed|evacuat|disaster|air quality|pollution|storm|cloudburst/i;
+const HAZARD_TERMS = /landslide|flood|flash flood|avalanche|earthquake|wildfire|forest fire|heavy rain|extreme rain|weather warning|evacuat|disaster|air quality|pollution|storm|cloudburst/i;
 
 export async function getDestinationNewsConditions(destination: string): Promise<{
   conditions: ConditionsIntelligence | null;
