@@ -71,9 +71,11 @@ export async function buildIntelligence(request: IntelligenceRequest): Promise<I
     ...base,
     prediction: {
       available: true, horizonDays, confidence: attention.hype ? "low" : null,
-      message: attention.hype
-        ? "Hype uses a limited public-attention proxy. Crowd and expense remain unavailable until defensible booking and price observations are connected."
-        : "Live weather and a public news scan are available where providers respond. Demand, crowd and expense need additional evidence.",
+      message: attention.signal.value !== null && request.mode === "date" && (horizonDays ?? 0) > 7
+        ? "Public-attention history is available, but we do not project it more than 7 days ahead. Weather is shown only where forecast coverage exists; crowd and expense need booking and comparable price observations."
+        : attention.hype
+          ? "Hype uses a limited public-attention proxy. Crowd and expense remain unavailable until defensible booking and price observations are connected."
+          : "Live weather and a public news scan are available where providers respond. Demand, crowd and expense need additional evidence.",
     },
     hype: attention.hype,
     crowd: null,
