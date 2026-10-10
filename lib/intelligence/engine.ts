@@ -40,7 +40,12 @@ export async function buildIntelligence(request: IntelligenceRequest): Promise<I
   ]);
 
   const horizonDays = request.mode === "date" ? daysFromToday(request.startDate) : null;
-  const available = request.mode === "current" || (horizonDays !== null && horizonDays >= 1 && horizonDays <= MAX_PREDICTION_DAYS);
+  const endHorizonDays = request.mode === "date" ? daysFromToday(request.endDate) : null;
+  const available = request.mode === "current" || (
+    horizonDays !== null && endHorizonDays !== null &&
+    horizonDays >= 1 && endHorizonDays >= 1 &&
+    horizonDays <= MAX_PREDICTION_DAYS && endHorizonDays <= MAX_PREDICTION_DAYS
+  );
   const base = {
     destination: { name: request.destination, region: regionFor(request.destination) },
     mode: request.mode,
