@@ -1,7 +1,6 @@
-import { mockProvider } from "./providers/mock";
 import { getOpenMeteoWeather } from "./providers/open-meteo";
-import { calculatePredictions } from "./prediction";
-import type { IntelligenceRequest, IntelligenceResponse } from "./types";
+import { getDestinationNewsConditions, getWikimediaAttention } from "./providers/open-data";
+import type { DemandSignal, IntelligenceRequest, IntelligenceResponse } from "./types";
 import { MAX_PREDICTION_DAYS } from "./validation";
 
 const REGION_BY_DESTINATION: Record<string, string> = {
@@ -11,76 +10,79 @@ const REGION_BY_DESTINATION: Record<string, string> = {
   "tirthan valley": "Himachal Pradesh",
   rishikesh: "Uttarakhand",
 };
-
 function regionFor(destination: string) {
   return REGION_BY_DESTINATION[destination.toLowerCase()] ?? "Destination";
 }
-
 function daysFromToday(date?: string) {
   if (!date) return null;
   const today = new Date();
   const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  const target = new Date(date + "T00:00:00Z").getTime();
-  return Math.ceil((target - todayUtc) / 86_400_000);
+  return Math.ceil((new Date(date + "T00:00:00Z").getTime() - todayUtc) / 86_400_000);
 }
-
-function signalResponse(snapshot: Awaited<ReturnType<typeof mockProvider.collect>>, expensePercent: number | null) {
-  return {
-    searchDemand: { value: snapshot.search.score, direction: snapshot.search.direction, confidence: snapshot.search.confidence, source: snapshot.search.source, evidence: snapshot.search.evidence },
-    hotelDemand: { value: snapshot.hotel.score, direction: snapshot.hotel.direction, confidence: snapshot.hotel.confidence, source: snapshot.hotel.source, evidence: snapshot.hotel.evidence },
-    hotelPricePressure: { value: expensePercent ?? 0, direction: (expensePercent ?? 0) > 0 ? "up" as const : (expensePercent ?? 0) < 0 ? "down" as const : "stable" as const, confidence: expensePercent === null ? "low" as const : "moderate" as const, source: "hotel_price_baseline", evidence: expensePercent === null ? ["No comparable same-room baseline was available."] : ["Compared with the normal-demand price of the same hotel and room."] },
-    flightDemand: { value: snapshot.flight.score, direction: snapshot.flight.direction, confidence: snapshot.flight.confidence, source: snapshot.flight.source, evidence: snapshot.flight.evidence },
-    socialInterest: { value: snapshot.social.score, direction: snapshot.social.direction, confidence: snapshot.social.confidence, source: snapshot.social.source, evidence: snapshot.social.evidence },
-  };
+function unavailableSignal(source: string, evidence: string[]): DemandSignal {
+  return { value: null, direction: "stable", confidence: "low", source, evidence };
 }
 
 export async function buildIntelligence(request: IntelligenceRequest): Promise<IntelligenceResponse> {
-  const [snapshot, weather] = await Promise.all([
-    mockProvider.collect(request),
+  const [attention, news, weather] = await Promise.all([
+    getWikimediaAttention(request).catch((error) => {
+      console.error("Wikimedia attention provider failed", error);
+      return { hype: null, signal: unavailableSignal("Wikimedia pageviews", ["Public page-view data is temporarily unavailable."]) };
+    }),
+    getDestinationNewsConditions(request.destination).catch((error) => {
+      console.error("Destination news provider failed", error);
+      return { conditions: null, signal: unavailableSignal("GDELT public news search", ["Public news scan is temporarily unavailable."]) };
+    }),
     getOpenMeteoWeather(request).catch((error) => {
       console.error("Open-Meteo weather provider failed", error);
       return null;
     }),
   ]);
-  const predictions = calculatePredictions(snapshot);
+
   const horizonDays = request.mode === "date" ? daysFromToday(request.startDate) : null;
   const available = request.mode === "current" || (horizonDays !== null && horizonDays >= 1 && horizonDays <= MAX_PREDICTION_DAYS);
-
   const base = {
     destination: { name: request.destination, region: regionFor(request.destination) },
     mode: request.mode,
     dates: { start: request.startDate ?? null, end: request.endDate ?? null },
-    signals: signalResponse(snapshot, predictions.expense.changePercent),
+    // Missing providers remain explicitly unavailable. No synthetic values are substituted.
+    signals: {
+      searchDemand: attention.signal,
+      hotelDemand: null,
+      hotelPricePressure: null,
+      flightDemand: null,
+      socialInterest: null,
+    },
   };
 
   if (!available) {
     return {
       ...base,
       prediction: {
-        available: false,
-        horizonDays,
-        confidence: null,
+        available: false, horizonDays, confidence: null,
         message: "Nice try. We're an intelligence engine, not a crystal ball. Reliable date-specific predictions are only available within our current prediction window.",
       },
-      hype: null,
-      crowd: null,
-      expense: null,
-      weather,
-      conditions: null,
-      alternatives: [],
-      betterDates: [],
+      hype: null, crowd: null, expense: null, weather,
+      conditions: news.conditions, alternatives: [], betterDates: [],
     };
   }
 
   return {
     ...base,
-    prediction: { available: true, horizonDays, confidence: predictions.confidence },
-    hype: predictions.hype,
-    crowd: predictions.crowd,
-    expense: predictions.expense,
-    weather,
-    conditions: null,
-    alternatives: [],
-    betterDates: [],
+    prediction: {
+      available: true, horizonDays, confidence: attention.hype ? "low" : null,
+      message: attention.hype
+        ? "Hype uses a limited public-attention proxy. Crowd and expense remain unavailable until defensible booking and price observations are connected."
+        : "Live weather and a public news scan are available where providers respond. Demand, crowd and expense need additional evidence.",
+    },
+    hype: attention.hype,
+    crowd: null,
+    expense: {
+      changePercent: null,
+      label: "Insufficient price data",
+      confidence: "low",
+      reason: "We do not yet have comparable observations for the same property, room, occupancy and stay length. No percentage is fabricated.",
+    },
+    weather, conditions: news.conditions, alternatives: [], betterDates: [],
   };
 }
