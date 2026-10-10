@@ -12,10 +12,10 @@ type Intelligence = {
   crowd: { level: string; label: string; confidence: string; reason: string } | null;
   expense: { changePercent: number | null; label: string; confidence: string; reason: string } | null;
   weather: { summary: string; confidence: string; temperature?: { minC: number; maxC: number } } | null;
-  conditions: { label: string; status: string; confidence: string; reason: string } | null;
+  conditions: { label: string; status: string; confidence: string; reason: string; source?: string; items?: { title: string; url: string; source: string; date: string | null }[] } | null;
   alternatives: { name: string; region: string; reason: string }[];
   betterDates: { name: string; region: string; reason: string }[];
-  signals: Record<string, { value: number; direction: string; confidence: string; source: string; evidence?: string[] }>;
+  signals: Record<string, { value: number | null; direction: string; confidence: string; source: string; evidence?: string[] } | null>;
 };
 
 const destinations = [
@@ -208,7 +208,7 @@ export default function Home() {
       )}
 
       {loading && (
-        <section className="empty-state"><span>02 / ANALYSING</span><h2>Reading the signals.</h2><p>Search, accommodation, flight and social signals are being assembled.</p></section>
+        <section className="empty-state"><span>02 / ANALYSING</span><h2>Reading the signals.</h2><p>Open weather, public-attention data and destination-related news are being assembled.</p></section>
       )}
 
       {intelligence && (
@@ -315,13 +315,23 @@ export default function Home() {
                 <h2>{hype?.current ?? "—"} <em>{hype?.label ?? ""}</em></h2>
                 <div className="overlay-meter"><span style={{ width: `${hype?.current ?? 0}%` }} /></div>
                 <div className="overlay-stats"><div><small>CURRENT HYPE</small><strong>{hype?.current ?? "—"}</strong></div><div><small>MOMENTUM</small><strong>{hype ? `${hype.momentum >= 0 ? "+" : ""}${hype.momentum}%` : "—"}</strong></div><div><small>PROJECTED</small><strong>{hype?.projected ?? "—"}</strong></div></div>
-                <p>Hype combines the available demand signals. Momentum describes how quickly those signals are changing and is used to estimate the selected-date level.</p>
+                <p>Hype uses recent Wikipedia page-view movement as a limited public-attention proxy, not as a count of searches, bookings or visitors. Momentum compares the latest 7-day average with the preceding 7 days. This early signal is low-confidence and is not yet calibrated against real travel outcomes.</p>
               </>
             ) : (
               <>
                 <span className="overline">0{cardIds.indexOf(openCard as any) + 2} / {openCard.toUpperCase()}</span>
                 <h2>{openCard === "crowd" ? intelligence.crowd?.label : openCard === "expense" ? (intelligence.expense?.changePercent == null ? "No price baseline" : `${intelligence.expense.changePercent > 0 ? "+" : ""}${intelligence.expense.changePercent}%`) : openCard === "weather" ? (intelligence.weather?.summary ?? "No weather data yet") : (intelligence.conditions?.label ?? "No conditions data yet")}</h2>
                 <p>{cardDetail[openCard as keyof typeof cardDetail] ?? "This signal does not have real provider data yet."}</p>
+                {openCard === "conditions" && intelligence.conditions?.items && intelligence.conditions.items.length > 0 && (
+                  <div className="weather-days">
+                    {intelligence.conditions.items.map((item) => (
+                      <div key={item.url}>
+                        <span>{item.source}{item.date ? ` · ${item.date}` : ""}</span>
+                        <strong><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {openCard === "weather" && intelligence.weather && (
                   <div className="weather-detail">
                     <div className="weather-meta">
