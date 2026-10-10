@@ -131,7 +131,7 @@ export async function getOpenMeteoWeather(request: IntelligenceRequest): Promise
       confidence: "low",
       source: "Open-Meteo",
       forecastDaysAvailable: days.length,
-      days,
+      days: [],
     };
   }
 
